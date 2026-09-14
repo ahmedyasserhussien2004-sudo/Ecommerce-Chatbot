@@ -1,0 +1,84 @@
+E-COMMERCE SUPPORT CHATBOT — SETUP & DEPLOYMENT STEPS (Windows / PowerShell)
+==============================================================================
+
+1) CREATE AND ACTIVATE A VIRTUAL ENVIRONMENT
+------------------------------------------------------------------------------
+cd ecommerce_support_chatbot
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+
+If PowerShell blocks activation with an "execution policy" error, run this
+first, then retry the line above:
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+
+You'll know it worked when your prompt shows (.venv) at the start, e.g.:
+(.venv) PS C:\...\ecommerce_support_chatbot>
+
+
+2) INSTALL DEPENDENCIES
+------------------------------------------------------------------------------
+pip install -r requirements.txt
+
+
+3) ADD YOUR GROQ API KEY
+------------------------------------------------------------------------------
+Copy-Item .env.example .env
+notepad .env
+
+In Notepad, find this line:
+GROQ_API_KEY=your_groq_api_key_here
+
+Replace it with your real key from https://console.groq.com/keys, e.g.:
+GROQ_API_KEY=gsk_abc123yourrealkeyhere
+
+Save (Ctrl+S) and close Notepad.
+
+Verify it saved correctly:
+Get-Content .env | Select-String GROQ_API_KEY
+
+(If that says "file not found," run "dir .env*" — Notepad sometimes saves
+as .env.txt on Windows — and rename it back to .env.)
+
+
+4) TRAIN THE 4 MODULES (run once, in order — needs internet access)
+------------------------------------------------------------------------------
+python scripts/train_language_detector.py
+python scripts/train_sentiment_classifier.py
+python scripts/train_intent_classifier.py
+python scripts/build_vector_store.py
+
+
+5) RUN THE API
+------------------------------------------------------------------------------
+uvicorn app.main:app --reload
+
+Wait for this line in the log — it means the server started successfully
+and is now idle, waiting for requests (this is normal, not stuck):
+INFO:     Application startup complete.
+
+Leave this PowerShell window open and running. Do all testing from a
+SEPARATE PowerShell window.
+
+
+6) TEST IT (open a NEW PowerShell window, cd into the project folder first)
+------------------------------------------------------------------------------
+Option A — browser:
+  Open http://localhost:8000/docs
+  Expand POST /chat -> "Try it out" -> type a message -> Execute
+
+Option B — bundled test script:
+  python scripts/test_api.py
+
+Option C — single manual request:
+  Invoke-RestMethod -Uri http://localhost:8000/chat -Method Post `
+    -ContentType "application/json" `
+    -Body '{"message": "Where is my order?"}'
+
+
+NOTES
+------------------------------------------------------------------------------
+- "faiss.loader: Could not load library with AVX2 support" in the startup
+  log is NOT an error — it just falls back to the standard FAISS build and
+  loads fine. Ignore it.
+- Never commit or share your real .env file — only .env.example (with the
+  placeholder) should go in anything you submit or hand in.
